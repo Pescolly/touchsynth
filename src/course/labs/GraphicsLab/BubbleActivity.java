@@ -8,13 +8,8 @@ import java.util.concurrent.TimeUnit;
 
 import android.app.Activity;
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.media.AudioManager;
-import android.media.SoundPool;
-import android.media.SoundPool.OnLoadCompleteListener;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.GestureDetector;
@@ -41,22 +36,8 @@ public class BubbleActivity extends Activity {
 	// Main view
 	private RelativeLayout mFrame;
 
-	// Bubble image
-	private Bitmap mBitmap;
-
 	// Display dimensions
 	private int mDisplayWidth, mDisplayHeight;
-
-	// Sound variables
-
-	// AudioManager
-	private AudioManager mAudioManager;
-	// SoundPool
-	private SoundPool mSoundPool;
-	// ID for the bubble popping sound
-	private int mSoundID;
-	// Audio volume
-	private float mStreamVolume;
 
 	// Gesture Detector
 	private GestureDetector mGestureDetector;
@@ -69,10 +50,6 @@ public class BubbleActivity extends Activity {
 
 		// Set up user interface
 		mFrame = (RelativeLayout) findViewById(R.id.frame);
-
-		// Load basic bubble Bitmap
-		mBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.b128);
-
 	}
 
 	@Override
@@ -82,32 +59,7 @@ public class BubbleActivity extends Activity {
 		// Manage bubble popping sound
 		// Use AudioManager.STREAM_MUSIC as stream type
 
-		mAudioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
-
-		mStreamVolume = (float) mAudioManager
-				.getStreamVolume(AudioManager.STREAM_MUSIC)
-				/ mAudioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-
-		// - make a new SoundPool, allowing up to 10 streams DONE
-		int STREAMS = 10;
-		mSoundPool = new SoundPool(STREAMS, AudioManager.STREAM_MUSIC, 0);
-		
-		// - set a SoundPool OnLoadCompletedListener that calls setupGestureDetector() DONE
-		mSoundPool.setOnLoadCompleteListener(new OnLoadCompleteListener(){
-			@Override
-			public void onLoadComplete(SoundPool soundPool, int sampleId,
-					int status) {
-				setupGestureDetector();
-			}
-		});
-	
-		
-		// load the sound from res/raw/bubble_pop.wav DONE
-		mSoundID = 0;
-		
-		mSoundID = mSoundPool.load(this, R.raw.bubble_pop, 1);
-
-		
+		setupGestureDetector();
 	}
 
 	@Override
@@ -128,8 +80,8 @@ public class BubbleActivity extends Activity {
 		mGestureDetector = new GestureDetector(this,
 				new GestureDetector.SimpleOnGestureListener() {
 
-			// If a fling gesture starts on a BubbleView then change the
-			// BubbleView's velocity
+			// If a fling gesture starts on a touchCircle then change the
+			// touchCircle's velocity
 
 			@Override
 			public boolean onFling(MotionEvent event1, MotionEvent event2,
@@ -138,11 +90,11 @@ public class BubbleActivity extends Activity {
 				// TODO - Implement onFling actions.
 				// You can get all Views in mFrame using the
 				// ViewGroup.getChildCount() method
-				BubbleView bubble;
+				touchCircle bubble;
 			
 				int childCount = mFrame.getChildCount();
 				for (int index = 0; index < childCount; index++){
-					bubble = (BubbleView) mFrame.getChildAt(index);
+					bubble = (touchCircle) mFrame.getChildAt(index);
 					if(bubble.intersects(event1.getX(), event1.getY())){
 						bubble.deflect(velocityX, velocityY);
 						return true;
@@ -152,8 +104,8 @@ public class BubbleActivity extends Activity {
 				
 			}
 
-			// If a single tap intersects a BubbleView, then pop the BubbleView
-			// Otherwise, create a new BubbleView at the tap's location and add
+			// If a single tap intersects a touchCircle, then pop the touchCircle
+			// Otherwise, create a new touchCircle at the tap's location and add
 			// it to mFrame. You can get all views from mFrame with ViewGroup.getChildAt()
 
 			@Override
@@ -163,17 +115,17 @@ public class BubbleActivity extends Activity {
 				// You can get all Views in mFrame using the
 				// ViewGroup.getChildCount() method
 	
-				BubbleView bubble;
+				touchCircle bubble;
 				
 				int childCount = mFrame.getChildCount();
 				for (int index = 0; index < childCount; index++){
-					bubble = (BubbleView) mFrame.getChildAt(index);
+					bubble = (touchCircle) mFrame.getChildAt(index);
 					if(bubble.intersects(event.getX(), event.getY())){
 						bubble.stop(true);
 						return true;
 					}
 				}
-				bubble = new BubbleView(getApplicationContext(), event.getX(), event.getY());
+				bubble = new touchCircle(getApplicationContext(), event.getX(), event.getY());
 				bubble.start();
 				mFrame.addView(bubble);
 				return true;
@@ -194,69 +146,73 @@ public class BubbleActivity extends Activity {
 
 	@Override
 	protected void onPause() {
-		
-		// Release all SoundPool resources DONE
-		mSoundPool.release();
-
+	
 		super.onPause();
 	}
 
-	// BubbleView is a View that displays a bubble.
-	// This class handles animating, drawing, popping amongst other actions.
-	// A new BubbleView is created for each bubble on the display
 
-	private class BubbleView extends View {
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	// touchCircle is a View that displays a bubble.
+	// This class handles animating, drawing, popping amongst other actions.
+	// A new touchCircle is created for each bubble on the display
+
+	private class touchCircle extends View {
 
 		private static final int BITMAP_SIZE = 64;
 		private static final int REFRESH_RATE = 40;
 		private final Paint mPainter = new Paint();
 		private ScheduledFuture<?> mMoverFuture;
 		private int mScaledBitmapWidth;
-		private Bitmap mScaledBitmap;
+		private int COLOR_DEPTH = 255;
+		private Random r = new Random();
+		private ToneGenerator osc = new ToneGenerator();
+		private int noteValue;
+		private int oldNoteValue;
+		MessageObject messageObject = new MessageObject();
 
 		// location, speed and direction of the bubble
 		private float mXPos, mYPos, mDx, mDy;
-		private long mRotate, mDRotate;
 
-		public BubbleView(Context context, float x, float y) {
+		public touchCircle(Context context, float x, float y) {
 			super(context);
-			log("Creating Bubble at: x:" + x + " y:" + y);
+		//	log("Creating Bubble at: x:" + x + " y:" + y);
 
 			// Create a new random number generator to
 			// randomize size, rotation, speed and direction
-			Random r = new Random();
 
-			// Creates the bubble bitmap for this BubbleView DONE
-			createScaledBitmap(r);
+			// Creates the bubble bitmap for this touchCircle DONE
+			createScaledShape(r);
 			
 			// Adjust position to center the bubble under user's finger
 			mXPos = x - mScaledBitmapWidth / 2;
 			mYPos = y - mScaledBitmapWidth / 2;
 
-			// Set the BubbleView's speed and direction
+			// Set the touchCircle's speed and direction
 			setSpeedAndDirection(r);
-			
-			// Set the BubbleView's rotation
-			setRotation(r);
 
 			mPainter.setAntiAlias(true);
 
+
 		}
 
-		private void setRotation(Random r) {
-
-			if (speedMode == RANDOM) {
-				
-				//set rotation in range [1..3]
-				mDRotate = r.nextInt(3)+1;
-
-				
-			} else {
-			
-				mDRotate = 0;
-			
-			}
-		}
 
 		private void setSpeedAndDirection(Random r) {
 
@@ -289,7 +245,7 @@ public class BubbleActivity extends Activity {
 			}
 		}
 
-		private void createScaledBitmap(Random r) {
+		private void createScaledShape(Random r) {
 
 			if (speedMode != RANDOM) {
 
@@ -302,28 +258,22 @@ public class BubbleActivity extends Activity {
 				mScaledBitmapWidth = ((r.nextInt(3)+1) * BITMAP_SIZE);
 			
 			}
-
+			
 			// create the scaled bitmap using size set above DONE
-			mScaledBitmap = Bitmap.createScaledBitmap(mBitmap, mScaledBitmapWidth, mScaledBitmapWidth, true);
 		}
 
-		// Start moving the BubbleView & updating the display
+		// Start moving the touchCircle & updating the display
 		private void start() {
 
 			// Creates a WorkerThread
 			ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
 
-			// Execute the run() in Worker Thread every REFRESH_RATE
-			// milliseconds
+			// Execute the run() in Worker Thread every REFRESH_RATE milliseconds
 			// Save reference to this job in mMoverFuture
 			mMoverFuture = executor.scheduleWithFixedDelay(new Runnable() {
 				@Override
 				public void run() {
-					// DONE implement movement logic.
-					// Each time this method is run the BubbleView should
-					// move one step. If the BubbleView exits the display, 
-					// stop the BubbleView's Worker Thread. 
-					// Otherwise, request that the BubbleView be redrawn. 
+					//If the touchCircle exits the display, stop the touchCircle's Worker Thread. 
 					postInvalidate();
 					if(moveWhileOnScreen()){
 						stop(false);
@@ -334,7 +284,7 @@ public class BubbleActivity extends Activity {
 
 		private synchronized boolean intersects(float x, float y) {
 
-			// Return true if the BubbleView intersects position (x,y)
+			// Return true if the touchCircle intersects position (x,y)
 			int radius = mScaledBitmapWidth/2;
 			double centerX = mXPos + mScaledBitmapWidth/2;
 			double centerY = mYPos + mScaledBitmapWidth/2;
@@ -344,7 +294,7 @@ public class BubbleActivity extends Activity {
 
 		// Cancel the Bubble's movement
 		// Remove Bubble from mFrame
-		// Play pop sound if the BubbleView was popped
+		// Play pop sound if the touchCircle was popped
 		
 		private void stop(final boolean popped) {
 
@@ -356,19 +306,12 @@ public class BubbleActivity extends Activity {
 					@Override
 					public void run() {
 						
-						mFrame.removeView(BubbleView.this);
-
 						if (popped) {
 							log("Pop!");
-
-							// If the bubble was popped by user,
-							// play the popping sound
-							mSoundPool.play(mSoundID, mStreamVolume, mStreamVolume, 1, 0, 1);
-
 						}
-
-						log("Bubble removed from view!");
-					
+						osc.killAudioTrack();
+						mFrame.removeView(touchCircle.this);
+	
 					}
 				});
 			}
@@ -386,37 +329,75 @@ public class BubbleActivity extends Activity {
 		}
 
 		// Draw the Bubble at its current location
+		// assign color and tone
 		@Override
 		protected synchronized void onDraw(Canvas canvas) {
 			try{
+//				long startTime = System.nanoTime();
+				int circleRadius;
+				int[] argbValues;
+				//TODO: change radius according to length of touch
+				circleRadius = 100;
 				//  - save the canvas
 				canvas.save();
+				noteValue = getNoteValue();
+				argbValues = getColorArray((float) noteValue);
+				messageObject.frequency = noteValue*100;
+				//set color and pitch according to location
+				//x-axis : tone y-axis pitch
 				
-				// increase the rotation of the original image by mDRotate
-				mRotate += mDRotate;
-	
-				
-				// Rotate the canvas by current rotation
-				canvas.rotate(mRotate, mXPos, mYPos);
+				if (oldNoteValue != noteValue){
+					osc.doInBackground(messageObject);					
+				}
 				
 				
-				//  - draw the bitmap at it's new location
-				canvas.drawBitmap(mScaledBitmap, mXPos, mYPos, mPainter);
-				
+				mPainter.setARGB(argbValues[0],argbValues[1],argbValues[2],argbValues[3]);
+				canvas.drawCircle(mXPos, mYPos, circleRadius, mPainter);
 				// - restore the canvas
+				oldNoteValue = noteValue;
 				canvas.restore();
-			
+//				long endTime = System.nanoTime();
+	//			System.out.println(endTime-startTime);
 			} catch (Exception exception){
 				Log.i(TAG, exception.toString());
 			}
 			
 		}
 
-
+		private synchronized int getNoteValue(){
+			//divide screen into 12 half steps
+			int STEPS = 12;
+			int noteHeight = mDisplayHeight/STEPS;
+		
+			//assign value to note depending on where it is on the screen.
+			for (int step = 0; step < STEPS; step++){
+				if (mYPos > (step) && mYPos < (noteHeight*step)){
+					return step;
+				}
+			}
+			//return arbitrary value if loop doens't work.
+			return mDisplayHeight/2;
+		}
+		
+		private int[] getColorArray(float yPos){
+			int RED =0;
+			int GREEN=0;
+			int BLUE=0;
+			int ALPHA=255;
+			int colorSteps = 255/12;
+			
+			//return ARGB array
+			RED = (int)yPos*colorSteps; 
+			
+			int returnArray[] = {ALPHA,RED,GREEN,BLUE};	
+			return returnArray;
+			
+		}
+		
 		private synchronized boolean moveWhileOnScreen() {
 
-			// Move the BubbleView
-			// Returns true if the BubbleView has exited the screen
+			// Move the touchCircle
+			// Returns true if the touchCircle has exited the screen
 			if (isOutOfView()){
 				return true;
 			}
@@ -430,7 +411,7 @@ public class BubbleActivity extends Activity {
 
 		private boolean isOutOfView() {
 
-			// Return true if the BubbleView has exited the screen
+			// Return true if the touchCircle has exited the screen
 			if (mXPos > mDisplayWidth || mYPos > mDisplayHeight || mXPos < 0 || mYPos < 0){
 				return true;
 			}
