@@ -11,6 +11,8 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.Menu;
@@ -183,11 +185,12 @@ public class BubbleActivity extends Activity {
 		private int mScaledBitmapWidth;
 		private int COLOR_DEPTH = 255;
 		private Random r = new Random();
-		private ToneGenerator osc = new ToneGenerator();
-		private int noteValue;
+		private ToneGenerator osc;
 		private int oldNoteValue;
-		MessageObject messageObject = new MessageObject();
+		// Creates a WorkerThread
+		private ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
 
+		
 		// location, speed and direction of the bubble
 		private float mXPos, mYPos, mDx, mDy;
 
@@ -209,65 +212,45 @@ public class BubbleActivity extends Activity {
 			setSpeedAndDirection(r);
 
 			mPainter.setAntiAlias(true);
-
+			osc = new ToneGenerator();	
 
 		}
 
 
 		private void setSpeedAndDirection(Random r) {
-
 			// Used by test cases
 			switch (speedMode) {
-
 			case SINGLE:
-
 				// Fixed speed
 				mDx = 10;
 				mDy = 10;
 				break;
-
 			case STILL:
-
 				// No speed
 				mDx = 0;
 				mDy = 0;
 				break;
-
 			default:
-
 				// Set movement direction and speed
 				// Limit movement speed in the x and y
 				// direction to [-3..3].
-				
 				mDx = r.nextInt(6)-r.nextInt(6);
 				mDy = r.nextInt(6)-r.nextInt(6);
-		//		Log.i(TAG, mDx+" "+mDy);
 			}
 		}
 
 		private void createScaledShape(Random r) {
-
 			if (speedMode != RANDOM) {
-
 				mScaledBitmapWidth = BITMAP_SIZE * 3;
-			
 			} else {
-			
 				//set scaled bitmap size in range [1..3] * BITMAP_SIZE
-				
 				mScaledBitmapWidth = ((r.nextInt(3)+1) * BITMAP_SIZE);
-			
 			}
-			
 			// create the scaled bitmap using size set above DONE
 		}
 
 		// Start moving the touchCircle & updating the display
 		private void start() {
-
-			// Creates a WorkerThread
-			ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-
 			// Execute the run() in Worker Thread every REFRESH_RATE milliseconds
 			// Save reference to this job in mMoverFuture
 			mMoverFuture = executor.scheduleWithFixedDelay(new Runnable() {
@@ -280,25 +263,15 @@ public class BubbleActivity extends Activity {
 					}	
 				}
 			}, 0, REFRESH_RATE, TimeUnit.MILLISECONDS);
+//			System.out.println(mMoverFuture);
 		}
-
-		private synchronized boolean intersects(float x, float y) {
-
-			// Return true if the touchCircle intersects position (x,y)
-			int radius = mScaledBitmapWidth/2;
-			double centerX = mXPos + mScaledBitmapWidth/2;
-			double centerY = mYPos + mScaledBitmapWidth/2;
-
-			return Math.hypot(centerX - (double) x, centerY - (double) y) < radius;
-		}
-
 		// Cancel the Bubble's movement
 		// Remove Bubble from mFrame
 		// Play pop sound if the touchCircle was popped
 		
 		private void stop(final boolean popped) {
 
-			if (null != mMoverFuture && mMoverFuture.cancel(true)) {
+			if (mMoverFuture != null && mMoverFuture.cancel(true)) {
 
 				// This work will be performed on the UI Thread
 				
@@ -309,12 +282,27 @@ public class BubbleActivity extends Activity {
 						if (popped) {
 							log("Pop!");
 						}
+						//release audio resources
 						osc.killAudioTrack();
+						//remove view
 						mFrame.removeView(touchCircle.this);
-	
+						//shut down executor thread
+						executor.shutdown();
 					}
 				});
+
 			}
+		}
+
+
+		private synchronized boolean intersects(float x, float y) {
+
+			// Return true if the touchCircle intersects position (x,y)
+			int radius = mScaledBitmapWidth/2;
+			double centerX = mXPos + mScaledBitmapWidth/2;
+			double centerY = mYPos + mScaledBitmapWidth/2;
+
+			return Math.hypot(centerX - (double) x, centerY - (double) y) < radius;
 		}
 
 		// Change the Bubble's speed and direction
@@ -336,20 +324,22 @@ public class BubbleActivity extends Activity {
 //				long startTime = System.nanoTime();
 				int circleRadius;
 				int[] argbValues;
+				int noteValue;
+
 				//TODO: change radius according to length of touch
 				circleRadius = 100;
 				//  - save the canvas
 				canvas.save();
 				noteValue = getNoteValue();
 				argbValues = getColorArray((float) noteValue);
-				messageObject.frequency = noteValue*100;
+		
 				//set color and pitch according to location
 				//x-axis : tone y-axis pitch
 				
 				if (oldNoteValue != noteValue){
-					osc.doInBackground(messageObject);					
+					
+					playNote(noteValue);
 				}
-				
 				
 				mPainter.setARGB(argbValues[0],argbValues[1],argbValues[2],argbValues[3]);
 				canvas.drawCircle(mXPos, mYPos, circleRadius, mPainter);
@@ -364,6 +354,11 @@ public class BubbleActivity extends Activity {
 			
 		}
 
+		private void playNote(int noteValue){
+			ToneGenerator osc = new ToneGenerator();
+			osc.execute();
+		}
+		
 		private synchronized int getNoteValue(){
 			//divide screen into 12 half steps
 			int STEPS = 12;
