@@ -7,17 +7,29 @@ import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Message;
 
-public class ToneGenerator extends AsyncTask{
-	private int amp = 10000;
-	private double twopi = 8.*Math.atan(1.);
-	private double fr = 440.f;
-	private double ph = 0.0;
+public class ToneGenerator extends AsyncTask<MessageObject, MessageObject, Void>
+{
+	private int AMPLITUDE = 10000;
+	private double TWO_PI = 8.*Math.atan(1.);
+	private double phase = 0.0;
 	private int SAMPLE_RATE;
 	private int BUFF_SIZE;
 	private AudioTrack audioTrack;
 	
-	public ToneGenerator(){
-		//get buffer size.
+	private double freq;
+	private float notelength;
+	/*
+	 * 
+	 * 
+	 * 
+	 * Possibly switch to wavetable synthesis????????
+	 * 
+	 * 
+	 * 
+	 */
+	public ToneGenerator()
+	{
+		//get sample rate and buffer size.
 		SAMPLE_RATE = AudioTrack.getNativeOutputSampleRate(AudioManager.STREAM_MUSIC);
 		BUFF_SIZE = AudioTrack.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT);
 		
@@ -26,36 +38,91 @@ public class ToneGenerator extends AsyncTask{
         AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, BUFF_SIZE, AudioTrack.MODE_STREAM);
 		
 	}
+
+	@Override
+	protected Void doInBackground(MessageObject... incomingNoteArray) 
+	{
+		// TODO select first message in incoming array and pull attributes to pass to oscillator
+		MessageObject incomingNote = incomingNoteArray[0];
+		freq = incomingNote.freq;
+		notelength = incomingNote.notelength;
+		
+		return null;
+	}
 	
-	public void oscillator(double freq, int playLength){
-		//assign incoming freq value to 'fr' and use to generate a sin wave
-		fr =  freq;		
+	@Override
+	protected void onProgressUpdate(MessageObject... progress)
+	{
+		MessageObject incomingNote = progress[0];
+		freq = incomingNote.freq;
+		notelength = incomingNote.notelength;
+	}
+	
+	private void sinWave(float notelength)	//method to generate sinwaves
+	{
 		short samples[] = new short[BUFF_SIZE];
 		int playedSamples = 0;
-		System.out.println(playLength);
+		notelength = SAMPLE_RATE*notelength;
 		
 		audioTrack.play();
-		while (playedSamples < playLength){
-			for(int i=0; i < BUFF_SIZE; i++){
-				samples[i] = (short) (amp*Math.sin(ph));
-				ph += twopi*fr/SAMPLE_RATE;
+		while (playedSamples < notelength)
+		{
+			for(int i=0; i < BUFF_SIZE; i++)
+			{
+				samples[i] = (short) (AMPLITUDE*Math.sin(phase));
+				phase += TWO_PI*freq/SAMPLE_RATE;
 			}
 			audioTrack.write(samples, 0, BUFF_SIZE);
 			playedSamples += BUFF_SIZE;
-//			System.out.println(playedSamples);
 		}
-		//System.out.println(BUFF_SIZE);
+		killAudioTrack();
+	}
+	
+	private void squareWave(double freq, float notelength)
+	{
+		short samples[] = new short[BUFF_SIZE];
+		int playedSamples = 0;
+		notelength = SAMPLE_RATE*notelength;					//change play rate to fraction of sample rate
+
+		audioTrack.play();
+		while(playedSamples < notelength)
+		{
+		    for( int i = 0; i < samples.length; i++ )
+		    {
+		        samples[i] = (short)(AMPLITUDE*Math.signum(Math.sin(phase)));
+		        phase += freq*TWO_PI/SAMPLE_RATE;
+			}
+			audioTrack.write(samples, 0, BUFF_SIZE);
+			playedSamples += BUFF_SIZE;
+		}
+		killAudioTrack();
+	}
+	
+	
+	private void triangleWave(double freq, float notelength)
+	{
+		short samples[] = new short[BUFF_SIZE];
+		int playedSamples = 0;
+		
+		notelength = SAMPLE_RATE*notelength;
+		audioTrack.play();
+		while(playedSamples < notelength)
+		{
+		    for( int i = 0; i < samples.length; i++ )
+		    {
+		 	   samples[i] = (short) (AMPLITUDE*Math.asin(Math.sin(phase)));
+		 	   phase += freq*TWO_PI/SAMPLE_RATE;
+		    }
+			audioTrack.write(samples, 0, BUFF_SIZE);
+			playedSamples += BUFF_SIZE;
+		}
+		killAudioTrack();
+	}
+	
+	
+	private void killAudioTrack()
+	{
 		audioTrack.stop();
-	}
-
-	public void killAudioTrack(){
 		audioTrack.release();
-	}
-
-	@Override
-	protected Object doInBackground(Object... params) {
-		// TODO Auto-generated method stub
-		oscillator(500, 44100);
-		return null;
 	}
 }

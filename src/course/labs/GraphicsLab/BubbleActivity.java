@@ -11,8 +11,6 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.Menu;
@@ -21,108 +19,81 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.RelativeLayout;
 
-public class BubbleActivity extends Activity {
-
-	// These variables are for testing purposes, do not modify
+public class BubbleActivity extends Activity 
+{
 	private final static int RANDOM = 0;
 	private final static int SINGLE = 1;
 	private final static int STILL = 2;
 	private static int speedMode = RANDOM;
-
 	private static final int MENU_STILL = Menu.FIRST;
 	private static final int MENU_SINGLE_SPEED = Menu.FIRST + 1;
 	private static final int MENU_RANDOM_SPEED = Menu.FIRST + 2;
-
 	private static final String TAG = "Lab-Graphics";
-
-	// Main view
-	private RelativeLayout mFrame;
-
-	// Display dimensions
-	private int mDisplayWidth, mDisplayHeight;
-
-	// Gesture Detector
-	private GestureDetector mGestureDetector;
+	private RelativeLayout mFrame;									// Main view
+	private int mDisplayWidth, mDisplayHeight;						// Display dimensions
+	private GestureDetector mGestureDetector;					// Gesture Detector
 
 	@Override
-	public void onCreate(Bundle savedInstanceState) {
+	public void onCreate(Bundle savedInstanceState) 
+	{
 		super.onCreate(savedInstanceState);
-
 		setContentView(R.layout.main);
-
-		// Set up user interface
-		mFrame = (RelativeLayout) findViewById(R.id.frame);
+		mFrame = (RelativeLayout) findViewById(R.id.frame);			// Set up user interface		
 	}
 
 	@Override
-	protected void onResume() {
+	protected void onResume() 
+	{
 		super.onResume();
-
-		// Manage bubble popping sound
-		// Use AudioManager.STREAM_MUSIC as stream type
-
 		setupGestureDetector();
 	}
 
 	@Override
-	public void onWindowFocusChanged(boolean hasFocus) {
+	public void onWindowFocusChanged(boolean hasFocus) 			// Get the size of the display
+	{
 		super.onWindowFocusChanged(hasFocus);
-		if (hasFocus) {
-
-			// Get the size of the display so this view knows where borders are
+		if (hasFocus) 
+		{
 			mDisplayWidth = mFrame.getWidth();
 			mDisplayHeight = mFrame.getHeight();
-
 		}
 	}
 
-	// Set up GestureDetector
-	private void setupGestureDetector() {
-
-		mGestureDetector = new GestureDetector(this,
-				new GestureDetector.SimpleOnGestureListener() {
-
-			// If a fling gesture starts on a touchCircle then change the
-			// touchCircle's velocity
-
+	private void setupGestureDetector() 
+	{
+		mGestureDetector = new GestureDetector(this,new GestureDetector.SimpleOnGestureListener() 
+		{
+			// If a fling gesture starts on a touchCircle then change the touchCircle's velocity
 			@Override
-			public boolean onFling(MotionEvent event1, MotionEvent event2,
-					float velocityX, float velocityY) {
-
-				// TODO - Implement onFling actions.
-				// You can get all Views in mFrame using the
-				// ViewGroup.getChildCount() method
-				touchCircle bubble;
-			
+			public boolean onFling(MotionEvent event1, MotionEvent event2, float velocityX, float velocityY) 
+			{
+				touchCircle bubble;		
 				int childCount = mFrame.getChildCount();
-				for (int index = 0; index < childCount; index++){
+				for (int index = 0; index < childCount; index++)
+				{
 					bubble = (touchCircle) mFrame.getChildAt(index);
-					if(bubble.intersects(event1.getX(), event1.getY())){
+					if(bubble.intersects(event1.getX(), event1.getY()))
+					{
 						bubble.deflect(velocityX, velocityY);
 						return true;
 					}
 				}				
 				return false;
-				
 			}
 
 			// If a single tap intersects a touchCircle, then pop the touchCircle
 			// Otherwise, create a new touchCircle at the tap's location and add
 			// it to mFrame. You can get all views from mFrame with ViewGroup.getChildAt()
-
 			@Override
-			public boolean onSingleTapConfirmed(MotionEvent event) {
-
-				// - Implement onSingleTapConfirmed actions.
-				// You can get all Views in mFrame using the
-				// ViewGroup.getChildCount() method
-	
-				touchCircle bubble;
-				
+			public boolean onSingleTapConfirmed(MotionEvent event) 
+			{
+				touchCircle bubble;				
 				int childCount = mFrame.getChildCount();
-				for (int index = 0; index < childCount; index++){
+				for (int index = 0; index < childCount; index++)
+				{
 					bubble = (touchCircle) mFrame.getChildAt(index);
-					if(bubble.intersects(event.getX(), event.getY())){
+					if(bubble.intersects(event.getX(), event.getY()))
+					{
 						bubble.stop(true);
 						return true;
 					}
@@ -131,24 +102,20 @@ public class BubbleActivity extends Activity {
 				bubble.start();
 				mFrame.addView(bubble);
 				return true;
-			
 			}
 		});
-		
 	}
 
 	@Override
-	public boolean onTouchEvent(MotionEvent event) {
-
-		// delegate the touch to the gestureDetector
-		if(mGestureDetector.onTouchEvent(event)) return true;
-		return false;
+	public boolean onTouchEvent(MotionEvent event) 
+	{
+		if (mGestureDetector.onTouchEvent(event)) return true; 		// delegate the touch to the gestureDetector
+		else return false;
 	
 	}
 
 	@Override
 	protected void onPause() {
-	
 		super.onPause();
 	}
 
@@ -172,247 +139,195 @@ public class BubbleActivity extends Activity {
 	
 	
 	
-	// touchCircle is a View that displays a bubble.
-	// This class handles animating, drawing, popping amongst other actions.
-	// A new touchCircle is created for each bubble on the display
-
-	private class touchCircle extends View {
-
+	private class touchCircle extends View 
+	{
 		private static final int BITMAP_SIZE = 64;
 		private static final int REFRESH_RATE = 40;
 		private final Paint mPainter = new Paint();
 		private ScheduledFuture<?> mMoverFuture;
-		private int mScaledBitmapWidth;
+		private int mCircleSize;
 		private int COLOR_DEPTH = 255;
 		private Random r = new Random();
-		private ToneGenerator osc;
-		private int oldNoteValue;
-		// Creates a WorkerThread
-		private ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+		private int oldNoteValue;	//last played note to be compared with new note
+		private ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);// Creates a WorkerThread
+		private int STEPS = 12;
+		
+		private double[] armenianScale = {261.626, 293.665, 329.628, 349.228, 391.995, 		//armenian tetrachord scale
+				440.000, 466.164, 523.251, 587.330, 622.254, 698.456, 830.609};
+		
+		private float mXPos, mYPos, mDx, mDy;			// location, speed and direction of the circle
+
+		public touchCircle(Context context, float x, float y) 
+		{
+			super(context);
+			createScaledShape();			// Creates the bubble bitmap for this touchCircle
+			mXPos = x - mCircleSize / 2;				// Adjust position to center the bubble under user's finger
+			mYPos = y - mCircleSize / 2;
+			setSpeedAndDirection();			// Set the touchCircle's speed and direction
+			mPainter.setAntiAlias(true);
+		}
+
+
+		private void setSpeedAndDirection() 
+		{
+			mDx = r.nextInt(6)-r.nextInt(6);
+			mDy = r.nextInt(6)-r.nextInt(6);
+		}
+
+		private void createScaledShape() 
+		{
+			mCircleSize = ((r.nextInt(7)+1) * BITMAP_SIZE);
+		}
 
 		
-		// location, speed and direction of the bubble
-		private float mXPos, mYPos, mDx, mDy;
-
-		public touchCircle(Context context, float x, float y) {
-			super(context);
-		//	log("Creating Bubble at: x:" + x + " y:" + y);
-
-			// Create a new random number generator to
-			// randomize size, rotation, speed and direction
-
-			// Creates the bubble bitmap for this touchCircle DONE
-			createScaledShape(r);
-			
-			// Adjust position to center the bubble under user's finger
-			mXPos = x - mScaledBitmapWidth / 2;
-			mYPos = y - mScaledBitmapWidth / 2;
-
-			// Set the touchCircle's speed and direction
-			setSpeedAndDirection(r);
-
-			mPainter.setAntiAlias(true);
-			osc = new ToneGenerator();	
-
-		}
-
-
-		private void setSpeedAndDirection(Random r) {
-			// Used by test cases
-			switch (speedMode) {
-			case SINGLE:
-				// Fixed speed
-				mDx = 10;
-				mDy = 10;
-				break;
-			case STILL:
-				// No speed
-				mDx = 0;
-				mDy = 0;
-				break;
-			default:
-				// Set movement direction and speed
-				// Limit movement speed in the x and y
-				// direction to [-3..3].
-				mDx = r.nextInt(6)-r.nextInt(6);
-				mDy = r.nextInt(6)-r.nextInt(6);
-			}
-		}
-
-		private void createScaledShape(Random r) {
-			if (speedMode != RANDOM) {
-				mScaledBitmapWidth = BITMAP_SIZE * 3;
-			} else {
-				//set scaled bitmap size in range [1..3] * BITMAP_SIZE
-				mScaledBitmapWidth = ((r.nextInt(3)+1) * BITMAP_SIZE);
-			}
-			// create the scaled bitmap using size set above DONE
-		}
-
-		// Start moving the touchCircle & updating the display
-		private void start() {
+		private void start() 				// Start moving the touchCircle & updating the display
+		{							
 			// Execute the run() in Worker Thread every REFRESH_RATE milliseconds
 			// Save reference to this job in mMoverFuture
-			mMoverFuture = executor.scheduleWithFixedDelay(new Runnable() {
+			mMoverFuture = executor.scheduleWithFixedDelay(new Runnable() 
+			{
 				@Override
-				public void run() {
-					//If the touchCircle exits the display, stop the touchCircle's Worker Thread. 
-					postInvalidate();
-					if(moveWhileOnScreen()){
-						stop(false);
+				public void run() 
+				{
+					postInvalidate();					//call to update screen
+					if(moveWhileOnScreen())
+					{									//If the touchCircle exits the display.... 
+						stop(false);					//...stop the touchCircle's Worker Thread
 					}	
 				}
 			}, 0, REFRESH_RATE, TimeUnit.MILLISECONDS);
-//			System.out.println(mMoverFuture);
 		}
-		// Cancel the Bubble's movement
-		// Remove Bubble from mFrame
-		// Play pop sound if the touchCircle was popped
 		
-		private void stop(final boolean popped) {
-
-			if (mMoverFuture != null && mMoverFuture.cancel(true)) {
-
-				// This work will be performed on the UI Thread
-				
-				mFrame.post(new Runnable() {
+		private void stop(final boolean popped) 				// This work will be performed on the UI Thread				
+		{
+			if (mMoverFuture != null && mMoverFuture.cancel(true)) 
+			{
+				mFrame.post(new Runnable() 
+				{
 					@Override
-					public void run() {
-						
-						if (popped) {
+					public void run() 
+					{	
+						if (popped) 
+						{
 							log("Pop!");
 						}
-						//release audio resources
-						osc.killAudioTrack();
-						//remove view
-						mFrame.removeView(touchCircle.this);
-						//shut down executor thread
-						executor.shutdown();
+						mFrame.removeView(touchCircle.this);			//remove view
+						executor.shutdown();							//shut down executor thread
 					}
 				});
-
 			}
 		}
 
 
-		private synchronized boolean intersects(float x, float y) {
-
-			// Return true if the touchCircle intersects position (x,y)
-			int radius = mScaledBitmapWidth/2;
-			double centerX = mXPos + mScaledBitmapWidth/2;
-			double centerY = mYPos + mScaledBitmapWidth/2;
-
+		private synchronized boolean intersects(float x, float y) 
+		{														// Return true if the touchCircle intersects position (x,y)
+			int radius = mCircleSize/2;
+			double centerX = mXPos + mCircleSize/2;
+			double centerY = mYPos + mCircleSize/2;
 			return Math.hypot(centerX - (double) x, centerY - (double) y) < radius;
 		}
 
 		// Change the Bubble's speed and direction
-		private synchronized void deflect(float velocityX, float velocityY) {
-			log("velocity X:" + velocityX + " velocity Y:" + velocityY);
-
-			//set mDx and mDy to be the new velocities divided by the REFRESH_RATE
-			
-			mDx = velocityX/REFRESH_RATE;
+		private synchronized void deflect(float velocityX, float velocityY) 
+		{
+			mDx = velocityX/REFRESH_RATE;			//set mDx and mDy to be the new velocities divided by the REFRESH_RATE
 			mDy = velocityY/REFRESH_RATE;
-
 		}
 
 		// Draw the Bubble at its current location
 		// assign color and tone
 		@Override
-		protected synchronized void onDraw(Canvas canvas) {
-			try{
-//				long startTime = System.nanoTime();
-				int circleRadius;
+		protected synchronized void onDraw(Canvas canvas) 
+		{
+			try
+			{
 				int[] argbValues;
 				int noteValue;
-
+				
+				canvas.save();				//  - save the canvas
+				
+				
 				//TODO: change radius according to length of touch
-				circleRadius = 100;
-				//  - save the canvas
-				canvas.save();
 				noteValue = getNoteValue();
 				argbValues = getColorArray((float) noteValue);
 		
 				//set color and pitch according to location
 				//x-axis : tone y-axis pitch
 				
-				if (oldNoteValue != noteValue){
-					
+				if (oldNoteValue != noteValue)				//send screen division to playnote function to send to oscillator
+				{
 					playNote(noteValue);
 				}
 				
-				mPainter.setARGB(argbValues[0],argbValues[1],argbValues[2],argbValues[3]);
-				canvas.drawCircle(mXPos, mYPos, circleRadius, mPainter);
-				// - restore the canvas
-				oldNoteValue = noteValue;
-				canvas.restore();
-//				long endTime = System.nanoTime();
-	//			System.out.println(endTime-startTime);
-			} catch (Exception exception){
+				mPainter.setARGB(argbValues[0],argbValues[1],argbValues[2],argbValues[3]);	//set color of circle
+				canvas.drawCircle(mXPos, mYPos, mCircleSize, mPainter);			//update circle position
+				oldNoteValue = noteValue;		//preserve old note value to avoid repetition
+				
+				canvas.restore();				// - restore the canvas
+			} catch (Exception exception) {
 				Log.i(TAG, exception.toString());
 			}
-			
 		}
 
-		private void playNote(int noteValue){
-			ToneGenerator osc = new ToneGenerator();
-			osc.execute();
+		private void playNote(int noteValue)
+		{
+			ToneGenerator osc = new ToneGenerator();			//create oscillator object and send note to it
+			MessageObject noteInfo = new MessageObject();		//create MessageObject and assign values
+			noteInfo.freq = 440;
+			noteInfo.notelength = 0.25f;
+			if(osc.getStatus() != null){
+				
+			}
+			osc.execute(noteInfo);								//execute oscillator async task
 		}
 		
-		private synchronized int getNoteValue(){
-			//divide screen into 12 half steps
-			int STEPS = 12;
-			int noteHeight = mDisplayHeight/STEPS;
+		private synchronized int getNoteValue()
+		{
+			int noteHeight = mDisplayHeight/STEPS;				//divide screen into 12 steps
 		
-			//assign value to note depending on where it is on the screen.
-			for (int step = 0; step < STEPS; step++){
-				if (mYPos > (step) && mYPos < (noteHeight*step)){
-					return step;
+			for (int step = 0; step < STEPS; step++)
+			{
+				if (mYPos > (step) && mYPos < (noteHeight*step))
+				{
+					return step;			//assign value to note depending on where it is on the screen.
 				}
 			}
-			//return arbitrary value if loop doens't work.
-			return mDisplayHeight/2;
+			return mDisplayHeight/2;					//return arbitrary value if something goes wrong
 		}
 		
-		private int[] getColorArray(float yPos){
+		private int[] getColorArray(float yPos)
+		{
 			int RED =0;
 			int GREEN=0;
 			int BLUE=0;
 			int ALPHA=255;
-			int colorSteps = 255/12;
+			int colorSteps = COLOR_DEPTH/STEPS;
 			
-			//return ARGB array
 			RED = (int)yPos*colorSteps; 
-			
-			int returnArray[] = {ALPHA,RED,GREEN,BLUE};	
-			return returnArray;
-			
+			int returnArray[] = {ALPHA,RED,GREEN,BLUE};				//return ARGB array
+			return returnArray;	
 		}
 		
-		private synchronized boolean moveWhileOnScreen() {
-
-			// Move the touchCircle
-			// Returns true if the touchCircle has exited the screen
-			if (isOutOfView()){
-				return true;
+		private synchronized boolean moveWhileOnScreen() 
+		{
+			if (isOutOfView())
+			{				
+				return true;					// Returns true if the touchCircle has exited the screen
+			} else {							//move circle by mDelta x/y
+				mXPos += mDx;
+				mYPos += mDy;
+				return false;
 			}
-	//		Log.i(TAG, "MOVING: "+mXPos+" "+mYPos);
-			mXPos += mDx;
-			mYPos += mDy;
-			
-			return false;
-
 		}
 
-		private boolean isOutOfView() {
-
-			// Return true if the touchCircle has exited the screen
-			if (mXPos > mDisplayWidth || mYPos > mDisplayHeight || mXPos < 0 || mYPos < 0){
+		private boolean isOutOfView() 
+		{														// Return true if the touchCircle has exited the screen
+			if (mXPos > mDisplayWidth || mYPos > mDisplayHeight || mXPos < 0 || mYPos < 0)
+			{
 				return true;
+			} else {
+				return false;
 			}
-
-			return false;
-
 		}
 	}
 
