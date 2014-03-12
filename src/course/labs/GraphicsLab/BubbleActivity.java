@@ -176,7 +176,7 @@ public class BubbleActivity extends Activity
 
 		private void createScaledShape() 
 		{
-			mCircleSize = ((r.nextInt(7)+1) * BITMAP_SIZE);
+			mCircleSize = ((r.nextInt(4)+1) * BITMAP_SIZE);
 		}
 
 		
@@ -224,7 +224,7 @@ public class BubbleActivity extends Activity
 			int radius = mCircleSize/2;
 			double centerX = mXPos + mCircleSize/2;
 			double centerY = mYPos + mCircleSize/2;
-			return Math.hypot(centerX - (double) x, centerY - (double) y) < radius;
+			return (Math.hypot(centerX - (double) x, centerY - (double) y) <= radius);
 		}
 
 		// Change the Bubble's speed and direction
@@ -271,28 +271,31 @@ public class BubbleActivity extends Activity
 
 		private void playNote(int noteValue)
 		{
+//			System.out.println(noteValue);
 			ToneGenerator osc = new ToneGenerator();			//create oscillator object and send note to it
 			MessageObject noteInfo = new MessageObject();		//create MessageObject and assign values
-			noteInfo.freq = 440;
-			noteInfo.notelength = 0.25f;
-			if(osc.getStatus() != null){
+			noteInfo.freq = armenianScale[noteValue]; 			//get random frequency from scale
+			noteInfo.notelength = r.nextFloat();				//get random note length.
+			noteInfo.amplitude = r.nextInt(10000);
+//			if(osc.getStatus() != null){
 				
-			}
+	//		}
 			osc.execute(noteInfo);								//execute oscillator async task
 		}
 		
 		private synchronized int getNoteValue()
 		{
 			int noteHeight = mDisplayHeight/STEPS;				//divide screen into 12 steps
-		
 			for (int step = 0; step < STEPS; step++)
 			{
-				if (mYPos > (step) && mYPos < (noteHeight*step))
+				if (mYPos > (step) && mYPos < (noteHeight*step))	//assign value to note depending on where it is on the screen.
 				{
-					return step;			//assign value to note depending on where it is on the screen.
+					step += 3;
+					step %= 12;										//make sure step is within 12 note scale
+					return step;
 				}
 			}
-			return mDisplayHeight/2;					//return arbitrary value if something goes wrong
+			return 0;										//return 0 if something goes wrong with getting height
 		}
 		
 		private int[] getColorArray(float yPos)

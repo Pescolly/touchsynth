@@ -9,7 +9,7 @@ import android.os.Message;
 
 public class ToneGenerator extends AsyncTask<MessageObject, MessageObject, Void>
 {
-	private int AMPLITUDE = 10000;
+	private int amplitude;
 	private double TWO_PI = 8.*Math.atan(1.);
 	private double phase = 0.0;
 	private int SAMPLE_RATE;
@@ -46,7 +46,8 @@ public class ToneGenerator extends AsyncTask<MessageObject, MessageObject, Void>
 		MessageObject incomingNote = incomingNoteArray[0];
 		freq = incomingNote.freq;
 		notelength = incomingNote.notelength;
-		
+		amplitude = incomingNote.amplitude;
+		triangleWave();
 		return null;
 	}
 	
@@ -69,7 +70,7 @@ public class ToneGenerator extends AsyncTask<MessageObject, MessageObject, Void>
 		{
 			for(int i=0; i < BUFF_SIZE; i++)
 			{
-				samples[i] = (short) (AMPLITUDE*Math.sin(phase));
+				samples[i] = (short) (amplitude*Math.sin(phase));
 				phase += TWO_PI*freq/SAMPLE_RATE;
 			}
 			audioTrack.write(samples, 0, BUFF_SIZE);
@@ -89,17 +90,17 @@ public class ToneGenerator extends AsyncTask<MessageObject, MessageObject, Void>
 		{
 		    for( int i = 0; i < samples.length; i++ )
 		    {
-		        samples[i] = (short)(AMPLITUDE*Math.signum(Math.sin(phase)));
+		        samples[i] = (short)(amplitude*Math.signum(Math.sin(phase)));
 		        phase += freq*TWO_PI/SAMPLE_RATE;
 			}
 			audioTrack.write(samples, 0, BUFF_SIZE);
 			playedSamples += BUFF_SIZE;
 		}
-		killAudioTrack();
+		//killAudioTrack();
 	}
 	
 	
-	private void triangleWave(double freq, float notelength)
+	private void triangleWave()
 	{
 		short samples[] = new short[BUFF_SIZE];
 		int playedSamples = 0;
@@ -110,7 +111,7 @@ public class ToneGenerator extends AsyncTask<MessageObject, MessageObject, Void>
 		{
 		    for( int i = 0; i < samples.length; i++ )
 		    {
-		 	   samples[i] = (short) (AMPLITUDE*Math.asin(Math.sin(phase)));
+		 	   samples[i] = (short) (amplitude*Math.asin(Math.sin(phase)));
 		 	   phase += freq*TWO_PI/SAMPLE_RATE;
 		    }
 			audioTrack.write(samples, 0, BUFF_SIZE);
